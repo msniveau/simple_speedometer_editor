@@ -10,11 +10,20 @@
 <body class="bg-gray-100 p-6">
     <div id="app" class="max-w-4xl mx-auto bg-white p-6 rounded shadow-lg">
         <h1 class="text-3xl font-bold mb-6 text-center">JSON Editor</h1>
-        
-        <div v-if="!jsonData" class="text-center">
-            <label class="block mb-4">Lade eine JSON-Datei hoch:</label>
-            <button @click="openFile" class="bg-blue-500 text-white px-4 py-2 rounded">Datei öffnen</button>
-        </div>
+		<div v-if="!jsonData"  class="text-center">
+			<label class="block mb-4">Lade eine JSON-Datei hoch:</label>
+			<div v-if="hasFilePicker">
+				<div v-if="" class="text-center">
+					<button @click="openFile" class="bg-blue-500 text-white px-4 py-2 rounded">Datei öffnen</button>
+				</div>
+			</div>
+			<div v-else>
+				<div v-if="!jsonData" class="text-center">
+					<input type="file" @change="loadJSON" class="border p-2" accept=".json">
+				</div>
+			</div>
+		</div>
+		
         
         <div v-else>
             <div v-for="(set, setName) in jsonData.Sets" :key="setName" class="mb-6 border p-4 rounded-lg shadow-sm bg-gray-50">
@@ -76,6 +85,7 @@
             data() {
                 return {
 					expanded: "",
+					hasFilePicker: window.showOpenFilePicker !== undefined,
                     jsonData: null,
                     dragData: null,
                     mapSearch: "",
@@ -1123,6 +1133,16 @@
                         console.error("Datei konnte nicht geöffnet werden", error);
                     }
                 },
+				loadJSON(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.jsonData = JSON.parse(e.target.result);
+                        };
+                        reader.readAsText(file);
+                    }
+                },
                 addSet() {
                     const setName = prompt("Neuer Set-Name:");
                     if (setName) {
@@ -1156,15 +1176,25 @@
                     this.jsonData.Sets[setName].Checkpoints.splice(index, 1);
                 },
                 async saveFile() {
-                    try {
-                        if (!this.fileHandle) return;
-                        const writable = await this.fileHandle.createWritable();
-                        await writable.write(JSON.stringify(this.jsonData, null, 2));
-                        await writable.close();
-                        alert("Datei gespeichert!");
-                    } catch (error) {
-                        console.error("Speichern fehlgeschlagen", error);
-                    }
+					if (this.hasFilePicker) {
+						try {
+							if (!this.fileHandle) return;
+							const writable = await this.fileHandle.createWritable();
+							await writable.write(JSON.stringify(this.jsonData, null, 2));
+							await writable.close();
+							alert("Datei gespeichert!");
+						} catch (error) {
+							console.error("Speichern fehlgeschlagen", error);
+						}
+					} else {
+						const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.jsonData, null, 2));
+						const downloadAnchor = document.createElement('a');
+						downloadAnchor.setAttribute("href", dataStr);
+						downloadAnchor.setAttribute("download", "data.json");
+						document.body.appendChild(downloadAnchor);
+						downloadAnchor.click();
+						document.body.removeChild(downloadAnchor);
+					}
                 }
             }
         });
